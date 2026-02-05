@@ -646,7 +646,7 @@ function App() {
 
                   {annualLeaveRecords.length > 0 ? (
                     <>
-                      <table className="year-records-table">
+                      <table className="year-records-table annual-records-table">
                         <thead>
                           <tr>
                             <th>날짜</th>
@@ -714,8 +714,11 @@ function App() {
                                   type="button"
                                   onClick={() => handleRemoveAnnualLeave(record.id)}
                                   className="btn-remove"
+                                  aria-label="삭제"
+                                  title="삭제"
                                 >
-                                  삭제
+                                  <span className="btn-remove-text">삭제</span>
+                                  <span className="btn-remove-icon">&times;</span>
                                 </button>
                               </td>
                             </tr>
