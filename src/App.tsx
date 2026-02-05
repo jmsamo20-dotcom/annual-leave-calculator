@@ -527,7 +527,7 @@ function App() {
                       />
                     </label>
                   </div>
-                  <div className="top-info-col">
+                  <div className="top-info-col top-info-col-carry">
                     <label className="input-label">
                       이월 연차 (일)
                       <input
@@ -624,11 +624,6 @@ function App() {
                   <div className="section-header">
                     <h3>연차 사용내역</h3>
                     <div className="header-actions">
-                      {lastSavedAt && (
-                        <span className="last-saved-at">
-                          저장된시간 {formatLastSavedAt(lastSavedAt)}
-                        </span>
-                      )}
                       <button type="button" className="btn-save" onClick={handleManualSave}>
                         저장하기
                       </button>
@@ -636,6 +631,11 @@ function App() {
                         전체 초기화
                       </button>
                     </div>
+                    {lastSavedAt && (
+                      <span className="last-saved-at">
+                        저장된시간 {formatLastSavedAt(lastSavedAt)}
+                      </span>
+                    )}
                   </div>
 
                   <YearUsageRecordForm
