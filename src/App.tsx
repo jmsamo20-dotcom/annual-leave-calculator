@@ -10,7 +10,7 @@ import type {
   AnnualLeaveRecord,
   EventLeaveRecord,
 } from './lib/calc';
-import { normalizeDateInput, getTodayString } from './lib/calc/dateUtils';
+import { getTodayString } from './lib/calc/dateUtils';
 import { hoursToDays, formatHoursAsDaysHours, getLeaveTypeLabel } from './lib/calc/formatters';
 import { YearRemainDisplay } from './components/YearRemainDisplay';
 import { YearUsageRecordForm } from './components/YearUsageRecordForm';
@@ -199,7 +199,6 @@ function App() {
 
   // 공통 입력값 - 입사일 (변경 없음)
   const [hireDate, setHireDate] = useState<string>('');
-  const [hireDateRaw, setHireDateRaw] = useState<string>('');
   const [hireDateError, setHireDateError] = useState('');
   const policyConfig: PolicyConfig = { type: 'DEFAULT' };
 
@@ -232,7 +231,6 @@ function App() {
       setHolidays(Array.isArray(saved.holidays) ? saved.holidays : []);
       if (saved.hireDate) {
         setHireDate(saved.hireDate);
-        setHireDateRaw(saved.hireDate);
       }
     } else {
       setCarryDays(0);
@@ -244,7 +242,6 @@ function App() {
     const savedHireDate = localStorage.getItem(HIRE_DATE_KEY);
     if (savedHireDate && !saved?.hireDate) {
       setHireDate(savedHireDate);
-      setHireDateRaw(savedHireDate);
     }
 
     setIsHydrated(true);
@@ -269,32 +266,6 @@ function App() {
       localStorage.setItem(HIRE_DATE_KEY, hireDate);
     }
   }, [isHydrated, year, carryDays, annualLeaveRecords, eventLeaveRecords, holidays, hireDate]);
-
-  // 입사일 정규화 핸들러 (변경 없음)
-  const handleHireDateBlur = useCallback(() => {
-    setHireDateError('');
-    if (!hireDateRaw.trim()) {
-      setHireDate('');
-      return;
-    }
-
-    const normalized = normalizeDateInput(hireDateRaw);
-    if (normalized) {
-      setHireDate(normalized);
-      setHireDateRaw(normalized);
-    } else {
-      setHireDateError('입사일 형식이 올바르지 않습니다. 예: 2024-06-12 또는 2024 6 12');
-    }
-  }, [hireDateRaw]);
-
-  const handleHireDateKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        handleHireDateBlur();
-      }
-    },
-    [handleHireDateBlur]
-  );
 
   // 연도 변경 핸들러 (변경 없음)
   const handleYearDecrement = useCallback(() => {
@@ -488,7 +459,7 @@ function App() {
   }, [year, hireDate, carryDays, annualLeaveRecords]);
 
   return (
-    <div className="app">
+    <div className="app" translate="no">
       <header className="app-header">
         <div className="header-content">
           <h1>연차 계산기</h1>
@@ -534,12 +505,12 @@ function App() {
                     <label className="input-label">
                       입사일
                       <input
-                        type="text"
-                        value={hireDateRaw}
-                        onChange={(e) => setHireDateRaw(e.target.value)}
-                        onBlur={handleHireDateBlur}
-                        onKeyDown={handleHireDateKeyDown}
-                        placeholder="예: 2024-06-12 또는 2024 6 12"
+                        type="date"
+                        value={hireDate}
+                        onChange={(e) => {
+                          setHireDate(e.target.value);
+                          setHireDateError('');
+                        }}
                         className="input-field"
                       />
                       {hireDateError && <span className="input-error">{hireDateError}</span>}
