@@ -1670,6 +1670,16 @@
     display: none;
   }
 
+  /* 연차 현황: 보유 카드 전체폭 확장 */
+  .result-row .result-item.accent {
+    grid-column: span 2;
+  }
+
+  /* 휴가 사용 요약: 총 휴가 사용 카드 전체폭 확장 */
+  .summary-grid .summary-item.highlight {
+    grid-column: span 2;
+  }
+
   /* 연차 사용내역 섹션 헤더 모바일 */
   .section-header h3 {
     font-size: 0.95rem;
