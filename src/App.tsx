@@ -836,8 +836,11 @@ function App() {
                                   type="button"
                                   onClick={() => handleRemoveEventLeave(record.id)}
                                   className="btn-remove"
+                                  aria-label="삭제"
+                                  title="삭제"
                                 >
-                                  삭제
+                                  <span className="btn-remove-text">삭제</span>
+                                  <span className="btn-remove-icon">&times;</span>
                                 </button>
                               </td>
                             </tr>
