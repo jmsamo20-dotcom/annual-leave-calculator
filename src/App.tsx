@@ -5,17 +5,14 @@ import {
   WORK_HOURS_PER_DAY,
 } from './lib/calc';
 import type {
-  UsageRecord,
   PolicyConfig,
   AnnualLeaveRecord,
   EventLeaveRecord,
 } from './lib/calc';
 import { getTodayString } from './lib/calc/dateUtils';
-import { hoursToDays, formatHoursAsDaysHours, getLeaveTypeLabel } from './lib/calc/formatters';
+import { hoursToDays, formatHoursAsDaysHours } from './lib/calc/formatters';
 import { YearRemainDisplay } from './components/YearRemainDisplay';
-import { YearUsageRecordForm } from './components/YearUsageRecordForm';
 import { EventLeaveSelector } from './components/EventLeaveSelector';
-import { HolidayManager } from './components/HolidayManager';
 import { LeaveCalendar } from './components/LeaveCalendar';
 import { calculateWorkingDays } from './lib/calc/workingDays';
 import { parseMonthDay, formatToDateString } from './components/MonthDayPicker';
@@ -23,7 +20,7 @@ import { getDefaultHolidays } from './lib/holidays';
 import './App.css';
 
 // 앱 버전
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 
 // 테마 타입 및 localStorage 키
 type Theme = 'light' | 'dark';
@@ -35,17 +32,13 @@ function getInitialTheme(): Theme {
   if (saved === 'dark' || saved === 'light') {
     return saved;
   }
-  // OS 선호 테마 확인
   if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
     return 'dark';
   }
   return 'light';
 }
 
-// 새로운 탭 타입 (연차현황 vs 사용내역/경조휴가)
-type ViewTab = 'status' | 'records';
-
-// 통합 저장 데이터 구조 (변경 없음)
+// 통합 저장 데이터 구조
 type YearState = {
   year: number;
   hireDate: string;
@@ -60,7 +53,7 @@ const LAST_SAVED_AT_KEY = 'lastSavedAt';
 
 const getStorageKey = (year: number) => `annual_leave_year_${year}`;
 
-// 마지막 저장 시각 포맷팅 (YYYY.MM.DD.HH:mm)
+// 마지막 저장 시각 포맷팅
 function formatLastSavedAt(isoString: string | null): string {
   if (!isoString) return '';
   const date = new Date(isoString);
@@ -82,7 +75,7 @@ const safeParse = <T,>(raw: string | null): T | null => {
   }
 };
 
-// 기존 데이터 마이그레이션 (구 형식 -> 신 형식) - 변경 없음
+// 기존 데이터 마이그레이션
 function migrateOldData(saved: Record<string, unknown>): YearState | null {
   if (!saved || typeof saved !== 'object') return null;
 
@@ -180,7 +173,6 @@ function App() {
   // 테마 상태
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
 
-  // 테마 변경 시 DOM 및 localStorage 업데이트
   useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -190,24 +182,24 @@ function App() {
     localStorage.setItem(THEME_KEY, theme);
   }, [theme]);
 
-  // 테마 토글 핸들러
   const toggleTheme = useCallback(() => {
     setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
   }, []);
 
-  // 새 탭 상태: 연차현황 vs 사용내역/경조휴가
-  const [viewTab, setViewTab] = useState<ViewTab>('status');
-
-  // 공통 입력값 - 입사일 (변경 없음)
+  // 공통 입력값
   const [hireDate, setHireDate] = useState<string>('');
   const [hireDateError, setHireDateError] = useState('');
   const policyConfig: PolicyConfig = { type: 'DEFAULT' };
 
-  // YEAR_REMAIN 모드 입력값 (변경 없음)
+  // 연도 및 기본 상태
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState<number>(currentYear);
+
+  // 이월연차: 입력용 문자열 상태 (빈 값 허용)
+  const [carryDaysInput, setCarryDaysInput] = useState<string>('0');
   const [carryDays, setCarryDays] = useState<number>(0);
-  const [referenceDate, setReferenceDate] = useState<string>(getTodayString()); // 기준일(현재일)
+
+  const [referenceDate] = useState<string>(getTodayString());
   const [annualLeaveRecords, setAnnualLeaveRecords] = useState<AnnualLeaveRecord[]>([]);
   const [eventLeaveRecords, setEventLeaveRecords] = useState<EventLeaveRecord[]>([]);
   const [holidays, setHolidays] = useState<string[]>([]);
@@ -217,7 +209,7 @@ function App() {
 
   const [isHydrated, setIsHydrated] = useState<boolean>(false);
 
-  // [1] 불러오기 (공휴일 기본값 적용 포함)
+  // [1] 불러오기 (공휴일 자동 적용)
   useEffect(() => {
     setIsHydrated(false);
 
@@ -227,14 +219,13 @@ function App() {
 
     if (saved) {
       setCarryDays(saved.carryDays ?? 0);
+      setCarryDaysInput(String(saved.carryDays ?? 0));
       setAnnualLeaveRecords(Array.isArray(saved.annualLeaveRecords) ? saved.annualLeaveRecords : []);
       setEventLeaveRecords(Array.isArray(saved.eventLeaveRecords) ? saved.eventLeaveRecords : []);
-      // 공휴일: 저장된 값이 있으면 사용, 없으면 기본값 적용
       const savedHolidays = Array.isArray(saved.holidays) ? saved.holidays : [];
       if (savedHolidays.length > 0) {
         setHolidays(savedHolidays);
       } else {
-        // 기본 공휴일 적용 (근로자의 날 5/1 포함)
         setHolidays(getDefaultHolidays(year));
       }
       if (saved.hireDate) {
@@ -242,9 +233,9 @@ function App() {
       }
     } else {
       setCarryDays(0);
+      setCarryDaysInput('0');
       setAnnualLeaveRecords([]);
       setEventLeaveRecords([]);
-      // 기본 공휴일 적용 (근로자의 날 5/1 포함)
       setHolidays(getDefaultHolidays(year));
     }
 
@@ -256,7 +247,7 @@ function App() {
     setIsHydrated(true);
   }, [year]);
 
-  // [2] 저장 (변경 없음)
+  // [2] 저장
   useEffect(() => {
     if (!isHydrated) return;
 
@@ -276,7 +267,28 @@ function App() {
     }
   }, [isHydrated, year, carryDays, annualLeaveRecords, eventLeaveRecords, holidays, hireDate]);
 
-  // 연도 변경 핸들러 (변경 없음)
+  // 이월연차 입력 핸들러 (빈 값 허용)
+  const handleCarryDaysChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    // 빈 값 또는 숫자/소수점만 허용
+    if (val === '' || /^[0-9]*\.?[0-9]*$/.test(val)) {
+      setCarryDaysInput(val);
+    }
+  }, []);
+
+  // 이월연차 blur 시 숫자로 변환
+  const handleCarryDaysBlur = useCallback(() => {
+    const num = parseFloat(carryDaysInput);
+    if (isNaN(num) || carryDaysInput === '') {
+      setCarryDays(0);
+      setCarryDaysInput('0');
+    } else {
+      setCarryDays(num);
+      setCarryDaysInput(String(num));
+    }
+  }, [carryDaysInput]);
+
+  // 연도 변경 핸들러
   const handleYearDecrement = useCallback(() => {
     setYear((prev) => Math.max(2000, prev - 1));
   }, []);
@@ -285,7 +297,7 @@ function App() {
     setYear((prev) => Math.min(2100, prev + 1));
   }, []);
 
-  // 연차 사용내역 핸들러 (변경 없음)
+  // 연차 사용내역 핸들러
   const handleAddAnnualLeave = useCallback((record: AnnualLeaveRecord) => {
     setAnnualLeaveRecords((prev) => {
       const newRecords = [...prev, record];
@@ -300,17 +312,7 @@ function App() {
     setAnnualLeaveRecords((prev) => prev.filter((r) => r.id !== id));
   }, []);
 
-  const handleUpdateAnnualLeave = useCallback(
-    (id: string, updates: Partial<AnnualLeaveRecord>) => {
-      setAnnualLeaveRecords((prev) => {
-        const updated = prev.map((r) => (r.id === id ? { ...r, ...updates } : r));
-        return updated.sort((a, b) => a.date.localeCompare(b.date));
-      });
-    },
-    []
-  );
-
-  // 경조휴가 핸들러 (변경 없음)
+  // 경조휴가 핸들러
   const handleAddEventLeave = useCallback((record: EventLeaveRecord) => {
     setEventLeaveRecords((prev) => {
       const newRecords = [...prev, record];
@@ -330,14 +332,11 @@ function App() {
       setEventLeaveRecords((prev) => {
         const updated = prev.map((r) => {
           if (r.id !== id) return r;
-
           const newRecord = { ...r, ...updates };
-
           if (updates.date) {
             const workingDays = calculateWorkingDays(updates.date, newRecord.calendarDays, holidaysSet);
             return { ...newRecord, workingDays };
           }
-
           return newRecord;
         });
         return updated.sort((a, b) => a.date.localeCompare(b.date));
@@ -346,22 +345,7 @@ function App() {
     [holidaysSet]
   );
 
-  // 공휴일 핸들러 (변경 없음)
-  const handleAddHoliday = useCallback((date: string) => {
-    setHolidays((prev) => {
-      if (prev.includes(date)) return prev;
-      return [...prev, date].sort();
-    });
-  }, []);
-
-  const handleRemoveHoliday = useCallback((date: string) => {
-    setHolidays((prev) => prev.filter((d) => d !== date));
-  }, []);
-
-  const handleBulkAddHolidays = useCallback((dates: string[]) => {
-    setHolidays(dates);
-  }, []);
-
+  // 공휴일 변경 시 경조휴가 근무일 재계산
   useEffect(() => {
     if (!isHydrated) return;
 
@@ -376,7 +360,7 @@ function App() {
     );
   }, [holidaysSet, isHydrated]);
 
-  // 수동 저장하기
+  // 수동 저장
   const handleManualSave = useCallback(() => {
     const payload = {
       year,
@@ -401,28 +385,14 @@ function App() {
     if (window.confirm('모든 연차 및 사용내역을 초기화합니다.\n되돌릴 수 없습니다. 계속하시겠습니까?')) {
       localStorage.removeItem(getStorageKey(year));
       setCarryDays(0);
+      setCarryDaysInput('0');
       setAnnualLeaveRecords([]);
       setEventLeaveRecords([]);
-      setHolidays([]);
+      setHolidays(getDefaultHolidays(year));
     }
   }, [year]);
 
-  // YearUsageRecordForm 호환용 핸들러
-  const handleYearAddRecordCompat = useCallback(
-    (record: UsageRecord) => {
-      const annualRecord: AnnualLeaveRecord = {
-        id: record.id,
-        type: 'ANNUAL',
-        date: record.date,
-        amountHours: record.amountHours,
-        memo: record.memo,
-      };
-      handleAddAnnualLeave(annualRecord);
-    },
-    [handleAddAnnualLeave]
-  );
-
-  // 계산된 값들 (변경 없음)
+  // 계산된 값들
   const annualUsedHoursTotal = useMemo(() => {
     return annualLeaveRecords.reduce((sum, r) => sum + r.amountHours, 0);
   }, [annualLeaveRecords]);
@@ -435,7 +405,7 @@ function App() {
     return eventLeaveRecords.reduce((sum, r) => sum + r.calendarDays, 0);
   }, [eventLeaveRecords]);
 
-  // YEAR_REMAIN 계산 결과 (변경 없음)
+  // YEAR_REMAIN 계산 결과
   const yearRemainResult = useMemo(() => {
     if (!hireDate) {
       return { result: null, errors: [], warnings: [] };
@@ -489,390 +459,262 @@ function App() {
       </header>
 
       <main className="app-main">
-            {/* 새 탭 버튼 */}
-            <div className="view-tabs">
-              <button
-                className={viewTab === 'status' ? 'active' : ''}
-                onClick={() => setViewTab('status')}
-              >
-                연차 현황
+        {/* 상단 영역: 입사일 | 이월연차 */}
+        <div className="top-info-row compact">
+          <div className="top-info-col">
+            <label className="input-label">
+              입사일
+              <input
+                type="date"
+                value={hireDate}
+                onChange={(e) => {
+                  setHireDate(e.target.value);
+                  setHireDateError('');
+                }}
+                className="input-field"
+              />
+              {hireDateError && <span className="input-error">{hireDateError}</span>}
+            </label>
+          </div>
+          <div className="top-info-col">
+            <label className="input-label">
+              이월 연차 (일)
+              <input
+                type="text"
+                inputMode="decimal"
+                value={carryDaysInput}
+                onChange={handleCarryDaysChange}
+                onBlur={handleCarryDaysBlur}
+                className="input-field"
+                placeholder="0"
+              />
+            </label>
+          </div>
+        </div>
+
+        {/* 연도 선택 */}
+        <div className="year-selector-section">
+          <div className="year-selector">
+            <button
+              type="button"
+              className="btn-year-nav"
+              onClick={handleYearDecrement}
+              aria-label="이전 연도"
+            >
+              ◀
+            </button>
+            <span className="year-display">{year}년</span>
+            <button
+              type="button"
+              className="btn-year-nav"
+              onClick={handleYearIncrement}
+              aria-label="다음 연도"
+            >
+              ▶
+            </button>
+          </div>
+        </div>
+
+        {/* 달력 (연차 빠른 추가 + 삭제 통합) */}
+        <LeaveCalendar
+          year={year}
+          annualLeaveRecords={annualLeaveRecords}
+          eventLeaveRecords={eventLeaveRecords}
+          holidays={holidaysSet}
+          workHoursPerDay={WORK_HOURS_PER_DAY}
+          initialMonth={referenceDate ? parseInt(referenceDate.split('-')[1], 10) : undefined}
+          onAddAnnualLeave={handleAddAnnualLeave}
+          onRemoveAnnualLeave={handleRemoveAnnualLeave}
+        />
+
+        {/* 연차 현황 */}
+        <section className="result-section year-status-section">
+          <div className="section-header-inline">
+            <h3 className="section-title">{year}년 연차 현황</h3>
+            <div className="header-actions-inline">
+              <button type="button" className="btn-save-small" onClick={handleManualSave}>
+                저장
               </button>
-              <button
-                className={viewTab === 'records' ? 'active' : ''}
-                onClick={() => setViewTab('records')}
-              >
-                사용내역 / 경조휴가
+              <button type="button" className="btn-reset-small" onClick={handleYearReset}>
+                초기화
               </button>
             </div>
+          </div>
+          {lastSavedAt && (
+            <span className="last-saved-at-inline">
+              저장: {formatLastSavedAt(lastSavedAt)}
+            </span>
+          )}
 
-            {/* 탭1: 연차 현황 */}
-            {viewTab === 'status' && (
-              <section className="tab-content">
-                {/* 상단 영역: 3컬럼 (입사일 | 기준일 | 이월연차) */}
-                <div className="top-info-row">
-                  <div className="top-info-col">
-                    <label className="input-label">
-                      입사일
-                      <input
-                        type="date"
-                        value={hireDate}
-                        onChange={(e) => {
-                          setHireDate(e.target.value);
-                          setHireDateError('');
-                        }}
-                        className="input-field"
-                      />
-                      {hireDateError && <span className="input-error">{hireDateError}</span>}
-                    </label>
-                  </div>
-                  <div className="top-info-col">
-                    <label className="input-label">
-                      캘린더 기준일(월 표시용)
-                      <input
-                        type="date"
-                        value={referenceDate}
-                        onChange={(e) => setReferenceDate(e.target.value)}
-                        className="input-field"
-                      />
-                    </label>
-                  </div>
-                  <div className="top-info-col top-info-col-carry">
-                    <label className="input-label">
-                      이월 연차 (일)
-                      <input
-                        type="number"
-                        value={carryDays}
-                        onChange={(e) => setCarryDays(parseFloat(e.target.value) || 0)}
-                        min="0"
-                        step="0.5"
-                        className="input-field"
-                      />
-                    </label>
-                  </div>
+          <YearRemainDisplay
+            result={yearRemainResult.result}
+            errors={yearRemainResult.errors}
+            warnings={yearRemainResult.warnings}
+          />
+
+          {/* 통합 요약 */}
+          {yearRemainResult.result && (
+            <div className="combined-summary">
+              <h4>휴가 사용 요약</h4>
+              <div className="summary-grid">
+                <div className="summary-item">
+                  <span className="label">연차 사용</span>
+                  <span className="value">
+                    {formatHoursAsDaysHours(annualUsedHoursTotal, WORK_HOURS_PER_DAY)}
+                  </span>
                 </div>
-
-                {/* 연도 선택 */}
-                <div className="year-selector-section">
-                  <div className="year-selector">
-                    <button
-                      type="button"
-                      className="btn-year-nav"
-                      onClick={handleYearDecrement}
-                      aria-label="이전 연도"
-                    >
-                      ◀
-                    </button>
-                    <span className="year-display">{year}년</span>
-                    <button
-                      type="button"
-                      className="btn-year-nav"
-                      onClick={handleYearIncrement}
-                      aria-label="다음 연도"
-                    >
-                      ▶
-                    </button>
-                  </div>
+                <div className="summary-item">
+                  <span className="label">경조휴가</span>
+                  <span className="value">+{eventLeaveWorkingDaysTotal}일</span>
                 </div>
+                <div className="summary-item highlight">
+                  <span className="label">총 휴가 사용</span>
+                  <span className="value">
+                    {hoursToDays(annualUsedHoursTotal, WORK_HOURS_PER_DAY) + eventLeaveWorkingDaysTotal}일
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
 
-                {/* 달력 */}
-                <LeaveCalendar
-                  year={year}
-                  annualLeaveRecords={annualLeaveRecords}
-                  eventLeaveRecords={eventLeaveRecords}
-                  holidays={holidaysSet}
-                  workHoursPerDay={WORK_HOURS_PER_DAY}
-                  initialMonth={referenceDate ? parseInt(referenceDate.split('-')[1], 10) : undefined}
-                  onAddAnnualLeave={handleAddAnnualLeave}
-                />
+        {/* 경조휴가 섹션 */}
+        <section className="result-section event-leave-section-main">
+          <h3 className="section-title">경조휴가</h3>
+          <p className="section-desc">경조휴가는 연차 잔여에 영향을 주지 않습니다.</p>
 
-                {/* YYYY년 연차 현황 */}
-                <section className="result-section year-status-section">
-                  <h3 className="section-title">{year}년 연차 현황</h3>
-                  <YearRemainDisplay
-                    result={yearRemainResult.result}
-                    errors={yearRemainResult.errors}
-                    warnings={yearRemainResult.warnings}
-                  />
+          <EventLeaveSelector year={year} holidays={holidaysSet} onAdd={handleAddEventLeave} />
 
-                  {/* 통합 요약 */}
-                  {yearRemainResult.result && (
-                    <div className="combined-summary">
-                      <h4>휴가 사용 요약 (참고용)</h4>
-                      <div className="summary-grid">
-                        <div className="summary-item">
-                          <span className="label">연차 사용</span>
-                          <span className="value">
-                            {formatHoursAsDaysHours(annualUsedHoursTotal, WORK_HOURS_PER_DAY)}
+          {eventLeaveRecords.length > 0 && (
+            <div className="event-records-list">
+              {/* PC: 테이블 */}
+              <table className="year-records-table event-records-table desktop-only">
+                <thead>
+                  <tr>
+                    <th>시작일</th>
+                    <th>유형</th>
+                    <th>규정</th>
+                    <th>실제 반영</th>
+                    <th>메모</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {eventLeaveRecords.map((record) => {
+                    const { month: evtMonth, day: evtDay } = parseMonthDay(record.date);
+                    return (
+                      <tr key={record.id}>
+                        <td>
+                          <div className="inline-month-day-picker">
+                            <select
+                              value={evtMonth}
+                              onChange={(e) => {
+                                const newMonth = parseInt(e.target.value);
+                                const maxDay = new Date(year, newMonth, 0).getDate();
+                                const newDay = evtDay > maxDay ? maxDay : evtDay;
+                                handleUpdateEventLeave(record.id, {
+                                  date: formatToDateString(year, newMonth, newDay),
+                                });
+                              }}
+                              className="month-select-inline"
+                            >
+                              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                                <option key={m} value={m}>{m}월</option>
+                              ))}
+                            </select>
+                            <select
+                              value={evtDay}
+                              onChange={(e) => {
+                                handleUpdateEventLeave(record.id, {
+                                  date: formatToDateString(year, evtMonth, parseInt(e.target.value)),
+                                });
+                              }}
+                              className="day-select-inline"
+                            >
+                              {Array.from({ length: new Date(year, evtMonth, 0).getDate() }, (_, i) => i + 1).map((d) => (
+                                <option key={d} value={d}>{d}일</option>
+                              ))}
+                            </select>
+                          </div>
+                        </td>
+                        <td><span className="event-title">{record.title}</span></td>
+                        <td>
+                          <span className="event-calendar-days">
+                            {record.calendarDays}일
+                            <span className="calendar-note">(휴일포함)</span>
                           </span>
-                        </div>
-                        <div className="summary-item">
-                          <span className="label">경조휴가 (근무일)</span>
-                          <span className="value">+{eventLeaveWorkingDaysTotal}일</span>
-                        </div>
-                        <div className="summary-item highlight">
-                          <span className="label">총 휴가 사용</span>
-                          <span className="value">
-                            {hoursToDays(annualUsedHoursTotal, WORK_HOURS_PER_DAY) + eventLeaveWorkingDaysTotal}일
+                        </td>
+                        <td>
+                          <span className="event-working-days">
+                            <strong>+{record.workingDays}일</strong>
+                            <span className="working-note">(근무일)</span>
                           </span>
-                        </div>
-                      </div>
-                      <p className="summary-note">
-                        ※ 총 휴가 사용은 연차 + 경조휴가(근무일 기준) 합산입니다.<br />
-                        ※ 연차 잔여 계산에는 경조휴가가 포함되지 않습니다.
-                      </p>
-                    </div>
-                  )}
-                </section>
-              </section>
-            )}
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={record.memo}
+                            onChange={(e) => handleUpdateEventLeave(record.id, { memo: e.target.value })}
+                            placeholder="메모"
+                            className="memo-input"
+                          />
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveEventLeave(record.id)}
+                            className="btn-remove"
+                            aria-label="삭제"
+                          >
+                            삭제
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
 
-            {/* 탭2: 사용내역 / 경조휴가 */}
-            {viewTab === 'records' && (
-              <section className="tab-content">
-                {/* 연차 사용내역 섹션 */}
-                <div className="usage-section">
-                  <div className="section-header">
-                    <h3>연차 사용내역</h3>
-                    <div className="header-actions">
-                      <button type="button" className="btn-save" onClick={handleManualSave}>
-                        저장하기
-                      </button>
-                      <button type="button" className="btn-reset" onClick={handleYearReset}>
-                        전체 초기화
+              {/* 모바일: 카드형 */}
+              <div className="event-cards-mobile mobile-only">
+                {eventLeaveRecords.map((record) => (
+                  <div key={record.id} className="event-card">
+                    <div className="event-card-header">
+                      <span className="event-card-date">{record.date.slice(5).replace('-', '/')}</span>
+                      <span className="event-card-title">{record.title}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveEventLeave(record.id)}
+                        className="btn-remove-card"
+                        aria-label="삭제"
+                      >
+                        ×
                       </button>
                     </div>
-                    {lastSavedAt && (
-                      <span className="last-saved-at">
-                        저장된시간 {formatLastSavedAt(lastSavedAt)}
-                      </span>
+                    <div className="event-card-body">
+                      <span className="event-card-actual">실제 반영: +{record.workingDays}일 (근무일)</span>
+                    </div>
+                    {record.memo && (
+                      <div className="event-card-memo">{record.memo}</div>
                     )}
                   </div>
+                ))}
+              </div>
 
-                  <YearUsageRecordForm
-                    year={year}
-                    workHoursPerDay={WORK_HOURS_PER_DAY}
-                    onAdd={handleYearAddRecordCompat}
-                  />
-
-                  {annualLeaveRecords.length > 0 ? (
-                    <>
-                      <table className="year-records-table annual-records-table">
-                        <thead>
-                          <tr>
-                            <th>날짜</th>
-                            <th>유형</th>
-                            <th>메모</th>
-                            <th></th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {annualLeaveRecords.map((record) => {
-                            const { month: recMonth, day: recDay } = parseMonthDay(record.date);
-                            return (
-                            <tr key={record.id}>
-                              <td>
-                                <div className="inline-month-day-picker">
-                                  <select
-                                    value={recMonth}
-                                    onChange={(e) => {
-                                      const newMonth = parseInt(e.target.value);
-                                      const maxDay = new Date(year, newMonth, 0).getDate();
-                                      const newDay = recDay > maxDay ? maxDay : recDay;
-                                      handleUpdateAnnualLeave(record.id, {
-                                        date: formatToDateString(year, newMonth, newDay),
-                                      });
-                                    }}
-                                    className="month-select-inline"
-                                  >
-                                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                                      <option key={m} value={m}>{m}월</option>
-                                    ))}
-                                  </select>
-                                  <select
-                                    value={recDay}
-                                    onChange={(e) => {
-                                      handleUpdateAnnualLeave(record.id, {
-                                        date: formatToDateString(year, recMonth, parseInt(e.target.value)),
-                                      });
-                                    }}
-                                    className="day-select-inline"
-                                  >
-                                    {Array.from({ length: new Date(year, recMonth, 0).getDate() }, (_, i) => i + 1).map((d) => (
-                                      <option key={d} value={d}>{d}일</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              </td>
-                              <td>
-                                <span className="leave-type-label">
-                                  {getLeaveTypeLabel(record.amountHours, WORK_HOURS_PER_DAY, record.memo)}
-                                </span>
-                              </td>
-                              <td>
-                                <input
-                                  type="text"
-                                  value={record.memo}
-                                  onChange={(e) =>
-                                    handleUpdateAnnualLeave(record.id, { memo: e.target.value })
-                                  }
-                                  placeholder="메모"
-                                  className="memo-input"
-                                />
-                              </td>
-                              <td>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveAnnualLeave(record.id)}
-                                  className="btn-remove"
-                                  aria-label="삭제"
-                                  title="삭제"
-                                >
-                                  <span className="btn-remove-text">삭제</span>
-                                  <span className="btn-remove-icon">&times;</span>
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                          })}
-                        </tbody>
-                      </table>
-                      <div className="year-summary">
-                        <span className="total-label">연차 사용 합계</span>
-                        <span className="total-value">
-                          {formatHoursAsDaysHours(annualUsedHoursTotal, WORK_HOURS_PER_DAY)} ({annualUsedHoursTotal}시간)
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="empty-records">아직 연차 사용내역이 없습니다.</div>
-                  )}
+              {/* 합계 */}
+              <div className="year-summary event-summary">
+                <div className="event-summary-row">
+                  <span className="total-label">경조휴가 실제 반영 합계</span>
+                  <span className="total-value highlight">+{eventLeaveWorkingDaysTotal}일 (근무일)</span>
                 </div>
-
-                {/* 경조휴가 섹션 */}
-                <div className="usage-section event-leave-section">
-                  <h3>경조휴가</h3>
-                  <p className="section-desc">경조휴가는 연차 잔여에 영향을 주지 않습니다.</p>
-
-                  {/* 공휴일 설정 */}
-                  <HolidayManager
-                    year={year}
-                    holidays={holidays}
-                    onAdd={handleAddHoliday}
-                    onRemove={handleRemoveHoliday}
-                    onBulkAdd={handleBulkAddHolidays}
-                  />
-
-                  <EventLeaveSelector year={year} holidays={holidaysSet} onAdd={handleAddEventLeave} />
-
-                  {eventLeaveRecords.length > 0 && (
-                    <>
-                      <table className="year-records-table event-records-table">
-                        <thead>
-                          <tr>
-                            <th>시작일</th>
-                            <th>유형</th>
-                            <th>규정</th>
-                            <th>실제 반영</th>
-                            <th>메모</th>
-                            <th></th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {eventLeaveRecords.map((record) => {
-                            const { month: evtMonth, day: evtDay } = parseMonthDay(record.date);
-                            return (
-                            <tr key={record.id}>
-                              <td>
-                                <div className="inline-month-day-picker">
-                                  <select
-                                    value={evtMonth}
-                                    onChange={(e) => {
-                                      const newMonth = parseInt(e.target.value);
-                                      const maxDay = new Date(year, newMonth, 0).getDate();
-                                      const newDay = evtDay > maxDay ? maxDay : evtDay;
-                                      handleUpdateEventLeave(record.id, {
-                                        date: formatToDateString(year, newMonth, newDay),
-                                      });
-                                    }}
-                                    className="month-select-inline"
-                                  >
-                                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                                      <option key={m} value={m}>{m}월</option>
-                                    ))}
-                                  </select>
-                                  <select
-                                    value={evtDay}
-                                    onChange={(e) => {
-                                      handleUpdateEventLeave(record.id, {
-                                        date: formatToDateString(year, evtMonth, parseInt(e.target.value)),
-                                      });
-                                    }}
-                                    className="day-select-inline"
-                                  >
-                                    {Array.from({ length: new Date(year, evtMonth, 0).getDate() }, (_, i) => i + 1).map((d) => (
-                                      <option key={d} value={d}>{d}일</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              </td>
-                              <td>
-                                <span className="event-title">{record.title}</span>
-                              </td>
-                              <td>
-                                <span className="event-calendar-days">
-                                  {record.calendarDays}일
-                                  <span className="calendar-note">(휴일포함)</span>
-                                </span>
-                              </td>
-                              <td>
-                                <span className="event-working-days">
-                                  <strong>+{record.workingDays}일</strong>
-                                  <span className="working-note">(근무일)</span>
-                                </span>
-                              </td>
-                              <td>
-                                <input
-                                  type="text"
-                                  value={record.memo}
-                                  onChange={(e) =>
-                                    handleUpdateEventLeave(record.id, { memo: e.target.value })
-                                  }
-                                  placeholder="메모"
-                                  className="memo-input"
-                                />
-                              </td>
-                              <td>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveEventLeave(record.id)}
-                                  className="btn-remove"
-                                  aria-label="삭제"
-                                  title="삭제"
-                                >
-                                  <span className="btn-remove-text">삭제</span>
-                                  <span className="btn-remove-icon">&times;</span>
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                          })}
-                        </tbody>
-                      </table>
-                      <div className="year-summary event-summary">
-                        <div className="event-summary-row">
-                          <span className="total-label">경조휴가 실제 반영 합계</span>
-                          <span className="total-value highlight">+{eventLeaveWorkingDaysTotal}일 (근무일 기준)</span>
-                        </div>
-                        <div className="event-summary-row sub">
-                          <span className="total-label">규정 달력일 합계</span>
-                          <span className="total-value muted">{eventLeaveCalendarDaysTotal}일 (휴일 포함)</span>
-                        </div>
-                      </div>
-                    </>
-                  )}
+                <div className="event-summary-row sub">
+                  <span className="total-label">규정 달력일 합계</span>
+                  <span className="total-value muted">{eventLeaveCalendarDaysTotal}일 (휴일 포함)</span>
                 </div>
-              </section>
-            )}
+              </div>
+            </div>
+          )}
+        </section>
       </main>
 
       <footer className="app-footer">

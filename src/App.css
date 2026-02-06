@@ -2250,6 +2250,223 @@
   padding: 12px;
 }
 
+/* 삭제 버튼 (이벤트 상세 패널 내) */
+.btn-remove-event {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: #fee;
+  color: #e74c3c;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.btn-remove-event:hover {
+  background: #e74c3c;
+  color: #fff;
+}
+
+/* =============================================
+   Compact Layout & Inline Header Styles
+   ============================================= */
+
+/* 상단 입력 영역 콤팩트 */
+.top-info-row.compact {
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 16px;
+}
+
+/* 섹션 헤더 인라인 */
+.section-header-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.section-header-inline .section-title {
+  margin: 0;
+}
+
+.header-actions-inline {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn-save-small,
+.btn-reset-small {
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-save-small {
+  background: #3b82f6;
+  color: #fff;
+  border: 1px solid #3b82f6;
+}
+
+.btn-save-small:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.btn-reset-small {
+  background: #f0f0f0;
+  color: #666;
+  border: 1px solid #ddd;
+}
+
+.btn-reset-small:hover {
+  background: #e74c3c;
+  color: #fff;
+  border-color: #e74c3c;
+}
+
+.last-saved-at-inline {
+  display: block;
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-bottom: 16px;
+}
+
+/* 섹션 설명 */
+.section-desc {
+  margin: 0 0 16px 0;
+  font-size: 0.85rem;
+  color: #888;
+}
+
+/* 경조휴가 메인 섹션 */
+.event-leave-section-main {
+  margin-top: 0;
+}
+
+/* PC/모바일 전용 표시 */
+.desktop-only {
+  display: block;
+}
+
+.mobile-only {
+  display: none;
+}
+
+/* 모바일 경조휴가 카드 */
+.event-cards-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.event-card {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.event-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.event-card-date {
+  font-weight: 600;
+  color: #333;
+  flex-shrink: 0;
+}
+
+.event-card-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #555;
+}
+
+.btn-remove-card {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #fee;
+  color: #e74c3c;
+  border-radius: 50%;
+  font-size: 1.3rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.btn-remove-card:hover {
+  background: #e74c3c;
+  color: #fff;
+}
+
+.event-card-body {
+  padding: 8px 12px;
+  background: #e8f5e9;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.event-card-actual {
+  font-size: 0.9rem;
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+.event-card-memo {
+  font-size: 0.85rem;
+  color: #888;
+  font-style: italic;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 767px) {
+  .desktop-only {
+    display: none !important;
+  }
+
+  .mobile-only {
+    display: block !important;
+  }
+
+  .top-info-row.compact {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .section-header-inline {
+    flex-wrap: wrap;
+  }
+
+  .section-header-inline .section-title {
+    flex: 1;
+    min-width: 120px;
+  }
+}
+
 /* =============================================
    View Tabs (2-Tab Structure)
    ============================================= */
@@ -3103,6 +3320,84 @@
 
 :root.dark .btn-quick-add-submit:hover {
   background: #16a34a;
+}
+
+/* 삭제 버튼 다크모드 */
+:root.dark .btn-remove-event {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+:root.dark .btn-remove-event:hover {
+  background: #ef4444;
+  color: #fff;
+}
+
+/* 인라인 헤더 다크모드 */
+:root.dark .last-saved-at-inline {
+  color: #94a3b8;
+}
+
+:root.dark .btn-save-small {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+:root.dark .btn-save-small:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+:root.dark .btn-reset-small {
+  background: #334155;
+  border-color: #475569;
+  color: #e2e8f0;
+}
+
+:root.dark .btn-reset-small:hover {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #fff;
+}
+
+:root.dark .section-desc {
+  color: #94a3b8;
+}
+
+/* 모바일 경조휴가 카드 다크모드 */
+:root.dark .event-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+:root.dark .event-card-date {
+  color: #f1f5f9;
+}
+
+:root.dark .event-card-title {
+  color: #94a3b8;
+}
+
+:root.dark .btn-remove-card {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+:root.dark .btn-remove-card:hover {
+  background: #ef4444;
+  color: #fff;
+}
+
+:root.dark .event-card-body {
+  background: rgba(34, 197, 94, 0.15);
+}
+
+:root.dark .event-card-actual {
+  color: #4ade80;
+}
+
+:root.dark .event-card-memo {
+  color: #64748b;
 }
 
 /* 공휴일 관리 select */

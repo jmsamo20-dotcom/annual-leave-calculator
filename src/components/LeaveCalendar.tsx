@@ -22,6 +22,7 @@ interface LeaveCalendarProps {
   workHoursPerDay?: number;
   initialMonth?: number; // 1-12, 기준일의 월
   onAddAnnualLeave?: (record: AnnualLeaveRecord) => void; // 빠른 추가용 콜백
+  onRemoveAnnualLeave?: (id: string) => void; // 삭제용 콜백
 }
 
 // 빠른 추가 프리셋 옵션
@@ -45,6 +46,7 @@ export function LeaveCalendar({
   workHoursPerDay = 8,
   initialMonth,
   onAddAnnualLeave,
+  onRemoveAnnualLeave,
 }: LeaveCalendarProps) {
   // 초기 월: initialMonth가 주어지면 해당 월, 아니면 1월
   const startMonth = initialMonth ? initialMonth - 1 : 0; // 0-indexed
@@ -415,38 +417,51 @@ export function LeaveCalendar({
 
           {selectedDateEvents.length > 0 ? (
             <ul className="event-list">
-              {selectedDateEvents.map((event) => (
-                <li key={event.id} className={`event-item event-${event.kind}`}>
-                  <div className="event-header">
-                    <span className={`event-kind-badge badge-${event.kind}`}>
-                      {getKindLabel(event.kind)}
-                    </span>
-                    <span className="event-title">{event.title}</span>
-                  </div>
-                  <div className="event-details">
-                    {event.kind === 'event' ? (
-                      <>
-                        <span className="event-period">
-                          {event.startDate} ~ {event.endDate}
-                        </span>
-                        <span className="event-deduct">
-                          실제 반영: +{event.deductDays}일 (근무일)
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        {event.deductHours !== undefined && (
-                          <span className="event-deduct">
-                            차감: {hoursToDisplayDays(event.deductHours, workHoursPerDay)} (
-                            {event.deductHours}시간)
+              {selectedDateEvents.map((event) => {
+                const isAnnualLeave = event.kind === 'annual' || event.kind === 'half' || event.kind === 'hour';
+                return (
+                  <li key={event.id} className={`event-item event-${event.kind}`}>
+                    <div className="event-header">
+                      <span className={`event-kind-badge badge-${event.kind}`}>
+                        {getKindLabel(event.kind)}
+                      </span>
+                      <span className="event-title">{event.title}</span>
+                      {isAnnualLeave && onRemoveAnnualLeave && (
+                        <button
+                          type="button"
+                          className="btn-remove-event"
+                          onClick={() => onRemoveAnnualLeave(event.id)}
+                          aria-label="삭제"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                    <div className="event-details">
+                      {event.kind === 'event' ? (
+                        <>
+                          <span className="event-period">
+                            {event.startDate} ~ {event.endDate}
                           </span>
-                        )}
-                      </>
-                    )}
-                    {event.memo && <span className="event-memo">메모: {event.memo}</span>}
-                  </div>
-                </li>
-              ))}
+                          <span className="event-deduct">
+                            실제 반영: +{event.deductDays}일 (근무일)
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          {event.deductHours !== undefined && (
+                            <span className="event-deduct">
+                              차감: {hoursToDisplayDays(event.deductHours, workHoursPerDay)} (
+                              {event.deductHours}시간)
+                            </span>
+                          )}
+                        </>
+                      )}
+                      {event.memo && <span className="event-memo">메모: {event.memo}</span>}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className="no-events">
