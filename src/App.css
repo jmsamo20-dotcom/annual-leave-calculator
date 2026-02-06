@@ -2516,9 +2516,17 @@
   }
 
   .top-info-row.compact {
-    grid-template-columns: 1fr;
-    gap: 12px;
+    grid-template-columns: 2fr 1fr;
+    gap: 10px;
     padding: 12px;
+  }
+
+  .top-info-row.compact .top-info-col {
+    min-width: 0;
+  }
+
+  .top-info-row.compact .input-field {
+    width: 100%;
   }
 
   .section-header-inline {

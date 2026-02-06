@@ -23,6 +23,7 @@ interface LeaveCalendarProps {
   initialMonth?: number; // 1-12, 기준일의 월
   onAddAnnualLeave?: (record: AnnualLeaveRecord) => void; // 빠른 추가용 콜백
   onRemoveAnnualLeave?: (id: string) => void; // 삭제용 콜백
+  clearSelectionSignal?: number; // 외부에서 선택 해제 요청 (값 변경 시 해제)
 }
 
 // 빠른 추가 프리셋 옵션
@@ -47,6 +48,7 @@ export function LeaveCalendar({
   initialMonth,
   onAddAnnualLeave,
   onRemoveAnnualLeave,
+  clearSelectionSignal,
 }: LeaveCalendarProps) {
   // 초기 월: initialMonth가 주어지면 해당 월, 아니면 1월
   const startMonth = initialMonth ? initialMonth - 1 : 0; // 0-indexed
@@ -64,6 +66,14 @@ export function LeaveCalendar({
       setActiveStartDate(new Date(year, initialMonth - 1, 1));
     }
   }, [year, initialMonth]);
+
+  // 외부에서 선택 해제 요청 시 (clearSelectionSignal 변경)
+  useEffect(() => {
+    if (clearSelectionSignal !== undefined && clearSelectionSignal > 0) {
+      setSelectedDate(null);
+      setShowQuickAdd(false);
+    }
+  }, [clearSelectionSignal]);
 
   // 기존 데이터를 LeaveEvent 형식으로 변환
   const leaveEvents = useMemo<LeaveEvent[]>(() => {

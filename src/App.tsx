@@ -219,6 +219,9 @@ function App() {
     return false;
   });
 
+  // 캘린더 선택 해제 신호 (페이지 외부 클릭 시 증가)
+  const [clearSelectionSignal, setClearSelectionSignal] = useState<number>(0);
+
   const [isHydrated, setIsHydrated] = useState<boolean>(false);
 
   // [1] 불러오기 (공휴일 자동 적용)
@@ -328,6 +331,11 @@ function App() {
       return;
     }
     setAnnualLeaveRecords((prev) => prev.filter((r) => r.id !== id));
+  }, []);
+
+  // 페이지 배경 클릭 시 캘린더 선택 해제
+  const handlePageBackgroundClick = useCallback(() => {
+    setClearSelectionSignal((prev) => prev + 1);
   }, []);
 
   // 경조휴가 섹션 토글 핸들러
@@ -465,8 +473,8 @@ function App() {
   }, [year, hireDate, carryDays, annualLeaveRecords]);
 
   return (
-    <div className="app" translate="no">
-      <header className="app-header">
+    <div className="app" translate="no" onClick={handlePageBackgroundClick}>
+      <header className="app-header" onClick={(e) => e.stopPropagation()}>
         <div className="header-content">
           <h1>연차 계산기</h1>
           <p className="subtitle">입사일 기준 연차 발생/사용/잔여 계산</p>
@@ -487,7 +495,7 @@ function App() {
 
       <main className="app-main">
         {/* 상단 영역: 입사일 | 이월연차 */}
-        <div className="top-info-row compact">
+        <div className="top-info-row compact" onClick={(e) => e.stopPropagation()}>
           <div className="top-info-col">
             <label className="input-label">
               입사일
@@ -520,7 +528,7 @@ function App() {
         </div>
 
         {/* 연도 선택 */}
-        <div className="year-selector-section">
+        <div className="year-selector-section" onClick={(e) => e.stopPropagation()}>
           <div className="year-selector">
             <button
               type="button"
@@ -552,10 +560,11 @@ function App() {
           initialMonth={referenceDate ? parseInt(referenceDate.split('-')[1], 10) : undefined}
           onAddAnnualLeave={handleAddAnnualLeave}
           onRemoveAnnualLeave={handleRemoveAnnualLeave}
+          clearSelectionSignal={clearSelectionSignal}
         />
 
         {/* 연차 현황 */}
-        <section className="result-section year-status-section">
+        <section className="result-section year-status-section" onClick={(e) => e.stopPropagation()}>
           <div className="section-header-inline">
             <h3 className="section-title">{year}년 연차 현황</h3>
             <div className="header-actions-inline">
@@ -606,7 +615,7 @@ function App() {
         </section>
 
         {/* 경조휴가 섹션 (접기/펼치기) */}
-        <section className="result-section event-leave-section-main">
+        <section className="result-section event-leave-section-main" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
             className="event-leave-toggle-btn"
@@ -764,7 +773,7 @@ function App() {
         </section>
       </main>
 
-      <footer className="app-footer">
+      <footer className="app-footer" onClick={(e) => e.stopPropagation()}>
         <p className="creator-credit">제작자_JW · v{APP_VERSION}</p>
       </footer>
     </div>
