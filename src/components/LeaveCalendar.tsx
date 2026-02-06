@@ -191,6 +191,12 @@ export function LeaveCalendar({
     setShowQuickAdd(false);
   }, []);
 
+  // 선택 해제 핸들러 (빈 공간 클릭 시)
+  const handleClearSelection = useCallback(() => {
+    setSelectedDate(null);
+    setShowQuickAdd(false);
+  }, []);
+
   // 월 변경 핸들러
   const handleActiveStartDateChange = useCallback(
     ({ activeStartDate }: { activeStartDate: Date | null }) => {
@@ -300,13 +306,13 @@ export function LeaveCalendar({
   const maxDate = new Date(year, 11, 31);
 
   return (
-    <div className="leave-calendar-container">
-      <div className="leave-calendar-header">
+    <div className="leave-calendar-container" onClick={handleClearSelection}>
+      <div className="leave-calendar-header" onClick={(e) => e.stopPropagation()}>
         <h3>휴가 사용 캘린더</h3>
         <p className="calendar-hint">날짜를 클릭하면 해당일 사용 내역을 확인할 수 있어요.</p>
       </div>
 
-      <div className="leave-calendar-wrapper">
+      <div className="leave-calendar-wrapper" onClick={(e) => e.stopPropagation()}>
         <Calendar
           onChange={handleDateClick}
           value={selectedDate}
@@ -327,7 +333,7 @@ export function LeaveCalendar({
       </div>
 
       {/* 범례 */}
-      <div className="calendar-legend">
+      <div className="calendar-legend" onClick={(e) => e.stopPropagation()}>
         <span className="legend-item">
           <span className="badge badge-annual">A</span> 연차
         </span>
@@ -347,9 +353,9 @@ export function LeaveCalendar({
 
       {/* 빠른 추가 패널 */}
       {selectedDate && showQuickAdd && onAddAnnualLeave && (
-        <div className="quick-add-panel">
+        <div className="quick-add-panel" onClick={(e) => e.stopPropagation()}>
           <div className="quick-add-header">
-            <strong>연차 빠른 추가</strong>
+            <strong>연차 추가</strong>
             <button
               type="button"
               className="btn-close-quick-add"
@@ -405,7 +411,7 @@ export function LeaveCalendar({
 
       {/* 선택된 날짜 상세 패널 */}
       {selectedDate && (
-        <div className="selected-date-panel">
+        <div className="selected-date-panel" onClick={(e) => e.stopPropagation()}>
           <div className="panel-header">
             <strong>{formatDateToYYYYMMDD(selectedDate)}</strong>
             {selectedDateHolidayInfo.isHoliday && (
