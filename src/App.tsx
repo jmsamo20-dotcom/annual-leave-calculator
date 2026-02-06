@@ -50,6 +50,7 @@ type YearState = {
 
 const HIRE_DATE_KEY = 'annual_leave_hire_date';
 const LAST_SAVED_AT_KEY = 'lastSavedAt';
+const EVENT_LEAVE_EXPANDED_KEY = 'ui.eventLeaveExpanded';
 
 const getStorageKey = (year: number) => `annual_leave_year_${year}`;
 
@@ -207,6 +208,17 @@ function App() {
 
   const holidaysSet = useMemo(() => new Set(holidays), [holidays]);
 
+  // 경조휴가 섹션 펼침/접힘 상태
+  const [eventLeaveExpanded, setEventLeaveExpanded] = useState<boolean>(() => {
+    const saved = localStorage.getItem(EVENT_LEAVE_EXPANDED_KEY);
+    // localStorage에 저장된 값이 있으면 사용
+    if (saved !== null) {
+      return saved === 'true';
+    }
+    // 없으면 기본값 false (접힘) - 데이터 로드 후 기록 있으면 펼침으로 변경됨
+    return false;
+  });
+
   const [isHydrated, setIsHydrated] = useState<boolean>(false);
 
   // [1] 불러오기 (공휴일 자동 적용)
@@ -221,7 +233,8 @@ function App() {
       setCarryDays(saved.carryDays ?? 0);
       setCarryDaysInput(String(saved.carryDays ?? 0));
       setAnnualLeaveRecords(Array.isArray(saved.annualLeaveRecords) ? saved.annualLeaveRecords : []);
-      setEventLeaveRecords(Array.isArray(saved.eventLeaveRecords) ? saved.eventLeaveRecords : []);
+      const loadedEventRecords = Array.isArray(saved.eventLeaveRecords) ? saved.eventLeaveRecords : [];
+      setEventLeaveRecords(loadedEventRecords);
       const savedHolidays = Array.isArray(saved.holidays) ? saved.holidays : [];
       if (savedHolidays.length > 0) {
         setHolidays(savedHolidays);
@@ -230,6 +243,11 @@ function App() {
       }
       if (saved.hireDate) {
         setHireDate(saved.hireDate);
+      }
+      // 경조휴가 기록이 있고, 사용자가 명시적으로 접기를 선택한 적이 없으면 자동 펼침
+      const savedExpandedPref = localStorage.getItem(EVENT_LEAVE_EXPANDED_KEY);
+      if (savedExpandedPref === null && loadedEventRecords.length > 0) {
+        setEventLeaveExpanded(true);
       }
     } else {
       setCarryDays(0);
@@ -310,6 +328,15 @@ function App() {
       return;
     }
     setAnnualLeaveRecords((prev) => prev.filter((r) => r.id !== id));
+  }, []);
+
+  // 경조휴가 섹션 토글 핸들러
+  const handleToggleEventLeave = useCallback(() => {
+    setEventLeaveExpanded((prev) => {
+      const next = !prev;
+      localStorage.setItem(EVENT_LEAVE_EXPANDED_KEY, String(next));
+      return next;
+    });
   }, []);
 
   // 경조휴가 핸들러
@@ -578,140 +605,160 @@ function App() {
           )}
         </section>
 
-        {/* 경조휴가 섹션 */}
+        {/* 경조휴가 섹션 (접기/펼치기) */}
         <section className="result-section event-leave-section-main">
-          <h3 className="section-title">경조휴가</h3>
-          <p className="section-desc">경조휴가는 연차 잔여에 영향을 주지 않습니다.</p>
+          <button
+            type="button"
+            className="event-leave-toggle-btn"
+            onClick={handleToggleEventLeave}
+            aria-expanded={eventLeaveExpanded}
+          >
+            <span className="toggle-title">
+              경조휴가 입력/조회
+              {eventLeaveRecords.length > 0 && (
+                <span className="toggle-badge">{eventLeaveRecords.length}건</span>
+              )}
+            </span>
+            <span className={`toggle-arrow ${eventLeaveExpanded ? 'expanded' : ''}`}>
+              ▾
+            </span>
+          </button>
 
-          <EventLeaveSelector year={year} holidays={holidaysSet} onAdd={handleAddEventLeave} />
+          {eventLeaveExpanded && (
+            <div className="event-leave-content">
+              <p className="section-desc">경조휴가는 연차 잔여에 영향을 주지 않습니다.</p>
 
-          {eventLeaveRecords.length > 0 && (
-            <div className="event-records-list">
-              {/* PC: 테이블 */}
-              <table className="year-records-table event-records-table desktop-only">
-                <thead>
-                  <tr>
-                    <th>시작일</th>
-                    <th>유형</th>
-                    <th>규정</th>
-                    <th>실제 반영</th>
-                    <th>메모</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {eventLeaveRecords.map((record) => {
-                    const { month: evtMonth, day: evtDay } = parseMonthDay(record.date);
-                    return (
-                      <tr key={record.id}>
-                        <td>
-                          <div className="inline-month-day-picker">
-                            <select
-                              value={evtMonth}
-                              onChange={(e) => {
-                                const newMonth = parseInt(e.target.value);
-                                const maxDay = new Date(year, newMonth, 0).getDate();
-                                const newDay = evtDay > maxDay ? maxDay : evtDay;
-                                handleUpdateEventLeave(record.id, {
-                                  date: formatToDateString(year, newMonth, newDay),
-                                });
-                              }}
-                              className="month-select-inline"
-                            >
-                              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                                <option key={m} value={m}>{m}월</option>
-                              ))}
-                            </select>
-                            <select
-                              value={evtDay}
-                              onChange={(e) => {
-                                handleUpdateEventLeave(record.id, {
-                                  date: formatToDateString(year, evtMonth, parseInt(e.target.value)),
-                                });
-                              }}
-                              className="day-select-inline"
-                            >
-                              {Array.from({ length: new Date(year, evtMonth, 0).getDate() }, (_, i) => i + 1).map((d) => (
-                                <option key={d} value={d}>{d}일</option>
-                              ))}
-                            </select>
-                          </div>
-                        </td>
-                        <td><span className="event-title">{record.title}</span></td>
-                        <td>
-                          <span className="event-calendar-days">
-                            {record.calendarDays}일
-                            <span className="calendar-note">(휴일포함)</span>
-                          </span>
-                        </td>
-                        <td>
-                          <span className="event-working-days">
-                            <strong>+{record.workingDays}일</strong>
-                            <span className="working-note">(근무일)</span>
-                          </span>
-                        </td>
-                        <td>
-                          <input
-                            type="text"
-                            value={record.memo}
-                            onChange={(e) => handleUpdateEventLeave(record.id, { memo: e.target.value })}
-                            placeholder="메모"
-                            className="memo-input"
-                          />
-                        </td>
-                        <td>
+              <EventLeaveSelector year={year} holidays={holidaysSet} onAdd={handleAddEventLeave} />
+
+              {eventLeaveRecords.length > 0 && (
+                <div className="event-records-list">
+                  {/* PC: 테이블 */}
+                  <table className="year-records-table event-records-table desktop-only">
+                    <thead>
+                      <tr>
+                        <th>시작일</th>
+                        <th>유형</th>
+                        <th>규정</th>
+                        <th>실제 반영</th>
+                        <th>메모</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {eventLeaveRecords.map((record) => {
+                        const { month: evtMonth, day: evtDay } = parseMonthDay(record.date);
+                        return (
+                          <tr key={record.id}>
+                            <td>
+                              <div className="inline-month-day-picker">
+                                <select
+                                  value={evtMonth}
+                                  onChange={(e) => {
+                                    const newMonth = parseInt(e.target.value);
+                                    const maxDay = new Date(year, newMonth, 0).getDate();
+                                    const newDay = evtDay > maxDay ? maxDay : evtDay;
+                                    handleUpdateEventLeave(record.id, {
+                                      date: formatToDateString(year, newMonth, newDay),
+                                    });
+                                  }}
+                                  className="month-select-inline"
+                                >
+                                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                                    <option key={m} value={m}>{m}월</option>
+                                  ))}
+                                </select>
+                                <select
+                                  value={evtDay}
+                                  onChange={(e) => {
+                                    handleUpdateEventLeave(record.id, {
+                                      date: formatToDateString(year, evtMonth, parseInt(e.target.value)),
+                                    });
+                                  }}
+                                  className="day-select-inline"
+                                >
+                                  {Array.from({ length: new Date(year, evtMonth, 0).getDate() }, (_, i) => i + 1).map((d) => (
+                                    <option key={d} value={d}>{d}일</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </td>
+                            <td><span className="event-title">{record.title}</span></td>
+                            <td>
+                              <span className="event-calendar-days">
+                                {record.calendarDays}일
+                                <span className="calendar-note">(휴일포함)</span>
+                              </span>
+                            </td>
+                            <td>
+                              <span className="event-working-days">
+                                <strong>+{record.workingDays}일</strong>
+                                <span className="working-note">(근무일)</span>
+                              </span>
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                value={record.memo}
+                                onChange={(e) => handleUpdateEventLeave(record.id, { memo: e.target.value })}
+                                placeholder="메모"
+                                className="memo-input"
+                              />
+                            </td>
+                            <td>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveEventLeave(record.id)}
+                                className="btn-remove"
+                                aria-label="삭제"
+                              >
+                                삭제
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+
+                  {/* 모바일: 카드형 */}
+                  <div className="event-cards-mobile mobile-only">
+                    {eventLeaveRecords.map((record) => (
+                      <div key={record.id} className="event-card">
+                        <div className="event-card-header">
+                          <span className="event-card-date">{record.date.slice(5).replace('-', '/')}</span>
+                          <span className="event-card-title">{record.title}</span>
                           <button
                             type="button"
                             onClick={() => handleRemoveEventLeave(record.id)}
-                            className="btn-remove"
+                            className="btn-remove-card"
                             aria-label="삭제"
                           >
-                            삭제
+                            ×
                           </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-
-              {/* 모바일: 카드형 */}
-              <div className="event-cards-mobile mobile-only">
-                {eventLeaveRecords.map((record) => (
-                  <div key={record.id} className="event-card">
-                    <div className="event-card-header">
-                      <span className="event-card-date">{record.date.slice(5).replace('-', '/')}</span>
-                      <span className="event-card-title">{record.title}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveEventLeave(record.id)}
-                        className="btn-remove-card"
-                        aria-label="삭제"
-                      >
-                        ×
-                      </button>
-                    </div>
-                    <div className="event-card-body">
-                      <span className="event-card-actual">실제 반영: +{record.workingDays}일 (근무일)</span>
-                    </div>
-                    {record.memo && (
-                      <div className="event-card-memo">{record.memo}</div>
-                    )}
+                        </div>
+                        <div className="event-card-body">
+                          <span className="event-card-actual">실제 반영: +{record.workingDays}일 (근무일)</span>
+                        </div>
+                        {record.memo && (
+                          <div className="event-card-memo">{record.memo}</div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
 
-              {/* 합계 */}
-              <div className="year-summary event-summary">
-                <div className="event-summary-row">
-                  <span className="total-label">경조휴가 실제 반영 합계</span>
-                  <span className="total-value highlight">+{eventLeaveWorkingDaysTotal}일 (근무일)</span>
+                  {/* 합계 */}
+                  <div className="year-summary event-summary">
+                    <div className="event-summary-row">
+                      <span className="total-label">경조휴가 실제 반영 합계</span>
+                      <span className="total-value highlight">+{eventLeaveWorkingDaysTotal}일 (근무일)</span>
+                    </div>
+                    <div className="event-summary-row sub">
+                      <span className="total-label">규정 달력일 합계</span>
+                      <span className="total-value muted">{eventLeaveCalendarDaysTotal}일 (휴일 포함)</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="event-summary-row sub">
-                  <span className="total-label">규정 달력일 합계</span>
-                  <span className="total-value muted">{eventLeaveCalendarDaysTotal}일 (휴일 포함)</span>
-                </div>
-              </div>
+              )}
             </div>
           )}
         </section>

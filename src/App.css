@@ -2354,6 +2354,70 @@
 /* 경조휴가 메인 섹션 */
 .event-leave-section-main {
   margin-top: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+/* 경조휴가 토글 버튼 */
+.event-leave-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 16px 20px;
+  background: #f8f9fa;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.event-leave-toggle-btn:hover {
+  background: #f0f4f8;
+  border-color: #4a90d9;
+}
+
+.toggle-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toggle-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  background: #4a90d9;
+  color: #fff;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.toggle-arrow {
+  font-size: 1.2rem;
+  color: #888;
+  transition: transform 0.2s;
+}
+
+.toggle-arrow.expanded {
+  transform: rotate(180deg);
+}
+
+/* 경조휴가 컨텐츠 영역 */
+.event-leave-content {
+  margin-top: 16px;
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
 }
 
 /* PC/모바일 전용 표시 */
@@ -2464,6 +2528,23 @@
   .section-header-inline .section-title {
     flex: 1;
     min-width: 120px;
+  }
+
+  /* 경조휴가 토글 버튼 모바일 */
+  .event-leave-toggle-btn {
+    padding: 14px 16px;
+    font-size: 0.95rem;
+  }
+
+  .toggle-badge {
+    min-width: 22px;
+    height: 22px;
+    font-size: 0.75rem;
+  }
+
+  .event-leave-content {
+    margin-top: 12px;
+    padding: 16px;
   }
 }
 
@@ -3398,6 +3479,31 @@
 
 :root.dark .event-card-memo {
   color: #64748b;
+}
+
+/* 경조휴가 토글 버튼 다크모드 */
+:root.dark .event-leave-toggle-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+:root.dark .event-leave-toggle-btn:hover {
+  background: #334155;
+  border-color: #4a90d9;
+}
+
+:root.dark .toggle-badge {
+  background: #3b82f6;
+}
+
+:root.dark .toggle-arrow {
+  color: #94a3b8;
+}
+
+:root.dark .event-leave-content {
+  background: #1e293b;
+  border-color: #334155;
 }
 
 /* 공휴일 관리 select */
