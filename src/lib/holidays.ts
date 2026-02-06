@@ -3,6 +3,15 @@
  */
 
 /**
+ * 기본 공휴일 가져오기 (근로자의 날 5/1 포함)
+ * 앱 초기화 시 자동 적용됨
+ */
+export function getDefaultHolidays(year: number): string[] {
+  const holidays = getKoreanPublicHolidaysPreset(year, true); // 근로자의 날 포함
+  return holidays || [];
+}
+
+/**
  * YYYY-MM-DD 형식 검증 및 정규화
  */
 export function normalizeDateStr(str: string): string | null {

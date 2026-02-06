@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-import type { AnnualLeaveRecord, EventLeaveRecord } from '../lib/calc/types';
+import type { AnnualLeaveRecord, EventLeaveRecord, UsagePreset } from '../lib/calc/types';
 import type { LeaveEvent, LeaveKind } from '../lib/calendarUtils';
 import {
   formatDateToYYYYMMDD,
@@ -12,6 +12,7 @@ import {
   hoursToDisplayDays,
 } from '../lib/calendarUtils';
 import { getHolidayName } from '../lib/holidays';
+import { presetToHours, getPresetMemo } from '../lib/calc/formatters';
 
 interface LeaveCalendarProps {
   year: number;
@@ -20,7 +21,18 @@ interface LeaveCalendarProps {
   holidays: Set<string>;
   workHoursPerDay?: number;
   initialMonth?: number; // 1-12, 기준일의 월
+  onAddAnnualLeave?: (record: AnnualLeaveRecord) => void; // 빠른 추가용 콜백
 }
+
+// 빠른 추가 프리셋 옵션
+const QUICK_ADD_PRESETS: { value: UsagePreset; label: string }[] = [
+  { value: 'FULL_DAY', label: '연차(1일)' },
+  { value: 'AM_HALF', label: '오전반차' },
+  { value: 'PM_HALF', label: '오후반차' },
+  { value: '3H', label: '시간연차(3h)' },
+  { value: '2H', label: '시간연차(2h)' },
+  { value: '1H', label: '시간연차(1h)' },
+];
 
 type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
@@ -32,11 +44,17 @@ export function LeaveCalendar({
   holidays,
   workHoursPerDay = 8,
   initialMonth,
+  onAddAnnualLeave,
 }: LeaveCalendarProps) {
   // 초기 월: initialMonth가 주어지면 해당 월, 아니면 1월
   const startMonth = initialMonth ? initialMonth - 1 : 0; // 0-indexed
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [activeStartDate, setActiveStartDate] = useState<Date>(new Date(year, startMonth, 1));
+
+  // 빠른 추가 패널 상태
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickAddPreset, setQuickAddPreset] = useState<UsagePreset>('FULL_DAY');
+  const [quickAddMemo, setQuickAddMemo] = useState('');
 
   // 기준일(initialMonth) 변경 시 캘린더 이동
   useEffect(() => {
@@ -123,7 +141,52 @@ export function LeaveCalendar({
   const handleDateClick = useCallback((value: Value) => {
     if (value instanceof Date) {
       setSelectedDate(value);
+      // 빠른 추가 패널 열기 (onAddAnnualLeave가 있을 때만)
+      if (onAddAnnualLeave) {
+        setShowQuickAdd(true);
+        setQuickAddPreset('FULL_DAY');
+        setQuickAddMemo('');
+      }
     }
+  }, [onAddAnnualLeave]);
+
+  // 빠른 추가 핸들러
+  const handleQuickAdd = useCallback(() => {
+    if (!selectedDate || !onAddAnnualLeave) return;
+
+    const dateStr = formatDateToYYYYMMDD(selectedDate);
+
+    // 중복 날짜 체크
+    const existingRecords = annualLeaveRecords.filter((r) => r.date === dateStr);
+    if (existingRecords.length > 0) {
+      const confirmed = window.confirm(
+        '해당 날짜에 이미 사용내역이 있어요. 추가로 등록할까요?'
+      );
+      if (!confirmed) return;
+    }
+
+    const hours = presetToHours(quickAddPreset, workHoursPerDay);
+    const memo = quickAddMemo || getPresetMemo(quickAddPreset);
+
+    const record: AnnualLeaveRecord = {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      type: 'ANNUAL',
+      date: dateStr,
+      amountHours: hours,
+      memo,
+    };
+
+    onAddAnnualLeave(record);
+
+    // 패널 닫기 및 초기화
+    setShowQuickAdd(false);
+    setQuickAddPreset('FULL_DAY');
+    setQuickAddMemo('');
+  }, [selectedDate, onAddAnnualLeave, quickAddPreset, quickAddMemo, workHoursPerDay, annualLeaveRecords]);
+
+  // 빠른 추가 패널 닫기
+  const handleCloseQuickAdd = useCallback(() => {
+    setShowQuickAdd(false);
   }, []);
 
   // 월 변경 핸들러
@@ -279,6 +342,64 @@ export function LeaveCalendar({
           <span className="badge badge-holiday-name">공휴일</span>
         </span>
       </div>
+
+      {/* 빠른 추가 패널 */}
+      {selectedDate && showQuickAdd && onAddAnnualLeave && (
+        <div className="quick-add-panel">
+          <div className="quick-add-header">
+            <strong>연차 빠른 추가</strong>
+            <button
+              type="button"
+              className="btn-close-quick-add"
+              onClick={handleCloseQuickAdd}
+              aria-label="닫기"
+            >
+              ×
+            </button>
+          </div>
+          <div className="quick-add-date">
+            {formatDateToYYYYMMDD(selectedDate)}
+            {selectedDateHolidayInfo.isHoliday && (
+              <span className="holiday-badge-small">
+                {selectedDateHolidayInfo.name || '공휴일'}
+              </span>
+            )}
+          </div>
+          <div className="quick-add-form">
+            <label className="quick-add-label">
+              유형
+              <select
+                value={quickAddPreset}
+                onChange={(e) => setQuickAddPreset(e.target.value as UsagePreset)}
+                className="quick-add-select"
+              >
+                {QUICK_ADD_PRESETS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="quick-add-label">
+              메모
+              <input
+                type="text"
+                value={quickAddMemo}
+                onChange={(e) => setQuickAddMemo(e.target.value)}
+                placeholder="예: 병원, 개인용무"
+                className="quick-add-input"
+              />
+            </label>
+            <button
+              type="button"
+              className="btn-quick-add-submit"
+              onClick={handleQuickAdd}
+            >
+              추가
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 선택된 날짜 상세 패널 */}
       {selectedDate && (

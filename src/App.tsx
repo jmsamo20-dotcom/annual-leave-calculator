@@ -19,6 +19,7 @@ import { HolidayManager } from './components/HolidayManager';
 import { LeaveCalendar } from './components/LeaveCalendar';
 import { calculateWorkingDays } from './lib/calc/workingDays';
 import { parseMonthDay, formatToDateString } from './components/MonthDayPicker';
+import { getDefaultHolidays } from './lib/holidays';
 import './App.css';
 
 // 앱 버전
@@ -216,7 +217,7 @@ function App() {
 
   const [isHydrated, setIsHydrated] = useState<boolean>(false);
 
-  // [1] 불러오기 (변경 없음)
+  // [1] 불러오기 (공휴일 기본값 적용 포함)
   useEffect(() => {
     setIsHydrated(false);
 
@@ -228,7 +229,14 @@ function App() {
       setCarryDays(saved.carryDays ?? 0);
       setAnnualLeaveRecords(Array.isArray(saved.annualLeaveRecords) ? saved.annualLeaveRecords : []);
       setEventLeaveRecords(Array.isArray(saved.eventLeaveRecords) ? saved.eventLeaveRecords : []);
-      setHolidays(Array.isArray(saved.holidays) ? saved.holidays : []);
+      // 공휴일: 저장된 값이 있으면 사용, 없으면 기본값 적용
+      const savedHolidays = Array.isArray(saved.holidays) ? saved.holidays : [];
+      if (savedHolidays.length > 0) {
+        setHolidays(savedHolidays);
+      } else {
+        // 기본 공휴일 적용 (근로자의 날 5/1 포함)
+        setHolidays(getDefaultHolidays(year));
+      }
       if (saved.hireDate) {
         setHireDate(saved.hireDate);
       }
@@ -236,7 +244,8 @@ function App() {
       setCarryDays(0);
       setAnnualLeaveRecords([]);
       setEventLeaveRecords([]);
-      setHolidays([]);
+      // 기본 공휴일 적용 (근로자의 날 5/1 포함)
+      setHolidays(getDefaultHolidays(year));
     }
 
     const savedHireDate = localStorage.getItem(HIRE_DATE_KEY);
@@ -573,6 +582,7 @@ function App() {
                   holidays={holidaysSet}
                   workHoursPerDay={WORK_HOURS_PER_DAY}
                   initialMonth={referenceDate ? parseInt(referenceDate.split('-')[1], 10) : undefined}
+                  onAddAnnualLeave={handleAddAnnualLeave}
                 />
 
                 {/* YYYY년 연차 현황 */}
